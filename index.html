@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Wikisearch</title>
+<style>
+body {
+  font-family: sans-serif;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+#header {
+  background-color: #f2f2f2;
+  padding: 20px;
+  text-align: center;
+}
+
+#search-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px;
+}
+
+#search-input {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  width: 500px;
+  font-size: 16px;
+}
+
+#search-button {
+  padding: 10px 20px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  margin-left: 10px;
+}
+
+#search-options {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+#results {
+  padding: 20px;
+  flex-grow: 1;
+}
+
+#search-results {
+  list-style-type: none;
+  padding: 0;
+}
+
+#search-results li {
+  margin-bottom: 10px;
+}
+
+#wiki-content {
+  margin-top: 20px;
+}
+
+#wiki-content a {
+  color: #0645ad;
+  text-decoration: none;
+}
+
+#wiki-content a:visited {
+  color: #0b0080;
+}
+
+#wiki-content h2 {
+  font-size: 1.5em;
+}
+
+#wiki-content h3 {
+  font-size: 1.2em;
+}
+
+#wiki-content img {
+  max-width: 500px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#wiki-content table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+#wiki-content table, th, td {
+  border: 1px solid black;
+  padding: 8px;
+}
+
+#footer {
+  background-color: #f2f2f2;
+  padding: 10px;
+  text-align: center;
+  margin-top: 20px;
+}
+</style>
+</head>
+<body>
+<div id="header">
+    <h1>Wikisearch</h1>
+</div>
+
+<div id="search-container">
+  <input type="text" id="search-input">
+  <button id="search-button" onclick="searchWiki()">Search</button>
+</div>
+
+<div id="search-options">
+  <input type="radio" id="normalMode" name="searchType" value="normal" checked>
+  <label for="normalMode">Normal Mode</label>
+
+  <input type="radio" id="manualURL" name="searchType" value="manual">
+  <label for="manualURL">Manual URL</label>
+
+  <input type="radio" id="autoMode" name="searchType" value="auto">
+  <label for="autoMode">Auto Mode</label>
+</div>
+
+<div id="results"></div>
+<div id="footer">
+    <p>© 2023 Wikisearch</p>
+</div>
+
+<script>
+function searchWiki() {
+    const searchTerm = document.getElementById("search-input").value;
+    const searchType = document.querySelector('input[name="searchType"]:checked').value;
+    const resultsDiv = document.getElementById("results");
+    resultsDiv.innerHTML = "";
+
+    if (searchType === "normal") {
+        const apiUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${searchTerm}&format=json&origin=*`;
+        fetchAndDisplayResults(apiUrl);
+    } else if (searchType === "auto") {
+        const apiUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${searchTerm}&format=json&origin=*`;
+        fetch(apiUrl)
+            .then(response => response.json())
+            .then(data => {
+                if (data.query.search.length > 0) {
+                    displayWikiContent(data.query.search[0].title);
+                } else {
+                    resultsDiv.innerHTML = "<p>No results found.</p>";
+                }
+            })
+            .catch(error => {
+                console.error("Error fetching data:", error);
+                resultsDiv.innerHTML = "<p>An error occurred.</p>";
+            });
+    } else { // manual URL
+        displayWikiContent(searchTerm);
+    }
+}
+
+
+function fetchAndDisplayResults(apiUrl) {
+    const resultsDiv = document.getElementById("results");
+    fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+            const searchResults = data.query.search;
+            const searchResultsList = document.createElement("ul");
+            searchResultsList.id = "search-results";
+
+            searchResults.forEach(result => {
+                const listItem = document.createElement("li");
+                const link = document.createElement("a");
+                link.href = "#";
+                link.textContent = result.title;
+
+                link.addEventListener("click", () => {
+                    displayWikiContent(result.title);
+                });
+
+                listItem.appendChild(link);
+                searchResultsList.appendChild(listItem);
+            });
+
+            resultsDiv.appendChild(searchResultsList);
+        })
+        .catch(error => {
+            console.error("Error fetching data:", error);
+            resultsDiv.innerHTML = "<p>An error occurred.</p>";
+        });
+}
+
+function displayWikiContent(pageTitle) {
+    const apiUrl = `https://en.wikipedia.org/w/api.php?action=parse&page=${pageTitle}&format=json&origin=*`;
+    const resultsDiv = document.getElementById("results");
+    resultsDiv.innerHTML = "";
+
+    fetch(apiUrl)
+        .then(response => response.json())
+        .then(data => {
+            if ("parse" in data) {
+                const pageContent = data.parse.text["*"];
+                const wikiContentDiv = document.createElement("div");
+                wikiContentDiv.id = "wiki-content";
+                wikiContentDiv.innerHTML = pageContent;
+                resultsDiv.appendChild(wikiContentDiv);
+            } else {
+                resultsDiv.innerHTML = "<p>Page not found.</p>";
+            }
+        })
+        .catch(error => {
+            console.error("Error fetching data:", error);
+            resultsDiv.innerHTML = "<p>An error occurred.</p>";
+        });
+}
+</script>
+</body>
+</html>
